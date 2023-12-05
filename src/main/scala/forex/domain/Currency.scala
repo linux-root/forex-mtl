@@ -1,10 +1,29 @@
 package forex.domain
 
 import cats.Show
+import forex.domain.Rate.Pair
+import io.circe.DecodingFailure
+
+import scala.util.Try
 
 sealed trait Currency
 
 object Currency {
+  private[domain] def generatePairs(currencies: Set[Currency]): Set[Pair] = {
+    if (currencies.size < 2) {
+      Set.empty
+    } else {
+      for {
+        a <- currencies
+        b <- currencies.tail if a != b
+      } yield Pair(a, b)
+    }
+  }
+
+
+  val allCurrencies: Set[Currency] = Set(AUD, CAD, CHF, EUR, GBP, NZD, JPY, SGD, USD)
+
+  val allPairs: Set[Pair] = generatePairs(allCurrencies)
   case object AUD extends Currency
   case object CAD extends Currency
   case object CHF extends Currency
@@ -27,7 +46,7 @@ object Currency {
     case USD => "USD"
   }
 
-  def fromString(s: String): Currency = s.toUpperCase match {
+  def unsafeFromString(s: String): Currency = s.toUpperCase match {
     case "AUD" => AUD
     case "CAD" => CAD
     case "CHF" => CHF
@@ -38,5 +57,9 @@ object Currency {
     case "SGD" => SGD
     case "USD" => USD
   }
+
+  def fromString(s: String): Either[DecodingFailure, Currency] = Try{
+    Right(unsafeFromString(s))
+  }.getOrElse(Left(DecodingFailure(s"$s is not a valid Currency", Nil)))
 
 }
