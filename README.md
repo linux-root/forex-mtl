@@ -11,7 +11,11 @@ docker run -p 8081:8080 paidyinc/one-frame
 ```shell
 sbt run
 ```
-### Run test
+### 3. Sending a request
+```shell
+curl --location 'http://localhost:8080/rates?from=USD&to=SGD'
+```
+## Run test
 ```shell
 sbt test
 ```
