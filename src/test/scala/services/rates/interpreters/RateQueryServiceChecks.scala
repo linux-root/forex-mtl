@@ -2,7 +2,7 @@ package services.rates.interpreters
 
 import cats.effect.concurrent.Ref
 import cats.effect.{Clock, IO, Sync}
-import cats.implicits.{catsStdShowForList, catsSyntaxApplicativeId, catsSyntaxApply, toFlatMapOps, toFunctorOps, toTraverseOps}
+import cats.implicits.{catsStdShowForList, toFlatMapOps, toFunctorOps, toTraverseOps}
 import cats.{MonadThrow, Show}
 import forex.domain.Rate.Pair
 import forex.domain.{Currency, Price, Rate, Timestamp}
@@ -62,8 +62,8 @@ object RateQueryServiceChecks extends SimpleIOSuite with Checkers {
         randomRates <- if (counter.remainingRequests == 0){
           MonadThrow[G].raiseError(new IllegalStateException("out of requests for a day"))
         } else {
-          counterRef.updateAndGet(_.takeRequest).flatMap {updatedCounter =>
-            println(s"requests count=${updatedCounter.remainingRequests}").pure[G] *> Clock[G].realTime(TimeUnit.SECONDS).map(now =>
+          counterRef.updateAndGet(_.takeRequest).flatMap {_ =>
+            Clock[G].realTime(TimeUnit.SECONDS).map(now =>
               randomRates(pairs, now)
             )
           }
@@ -73,7 +73,6 @@ object RateQueryServiceChecks extends SimpleIOSuite with Checkers {
   }
 
   def randomRates(pairs: List[Pair], now: Long): List[Rate] = {
-      println("request complete")
       pairs.map(pair => Rate(pair, Price(Random.nextDouble()), Timestamp(OffsetDateTime.ofInstant(Instant.ofEpochSecond(now), ZoneId.systemDefault()))))
   }
 
@@ -85,15 +84,15 @@ object RateQueryServiceChecks extends SimpleIOSuite with Checkers {
 
   private val pairGen: Gen[Pair] = Gen.choose(0, Currency.allPairs.size - 1).map {index => Currency.allPairs.toList(index)}
 
-  private val queryActionGen: Gen[QueryAction] = for {
+  private def queryActionGen(minSeconds: Long, maxSeconds: Long): Gen[QueryAction] = for {
     pair <- pairGen
-    secondsToTheNextAction <- Gen.chooseNum[Long](1, 301)
+    secondsToTheNextAction <- Gen.chooseNum[Long](minSeconds, maxSeconds)
   } yield QueryAction(pair, secondsToTheNextAction)
 
   private implicit val qaShow: Show[QueryAction] = Show.show(_.pair.cacheKey)
 
   test("10000 requests per day") {
-    forall(Gen.buildableOfN[List[QueryAction], QueryAction](10000, queryActionGen)) { actions =>
+    forall(Gen.buildableOfN[List[QueryAction], QueryAction](10000, queryActionGen(1, 301))) { actions =>
       for {
         counterRef <- Ref[IO].of(Counter(REQUEST_LIMIT, 0))
         epochTimestampRef <- Ref[IO].of(TODAY)
@@ -104,4 +103,18 @@ object RateQueryServiceChecks extends SimpleIOSuite with Checkers {
       } yield expect(true)
     }
   }
+
+  test("Worst case : never hit cache") {
+    forall(Gen.buildableOfN[List[QueryAction], QueryAction](10000, queryActionGen(301, 301))) { actions =>
+      for {
+        counterRef <- Ref[IO].of(Counter(REQUEST_LIMIT, 0))
+        epochTimestampRef <- Ref[IO].of(TODAY)
+        testClock = TestClock.create[IO](epochTimestampRef)
+        rateCaches <- rateCacheService[IO](testClock, Sync[IO])
+        service = rateQueryService(counterRef, rateCaches)(testClock, Sync[IO])
+        _ <- actions.traverse(action => service.get(action.pair) *> TestClock.adjust[IO](epochTimestampRef)(action.secondsToTheNextAction))
+      } yield expect(true)
+    }
+  }
+
 }
