@@ -7,6 +7,8 @@ object Protocol {
   final case class GetRatesRequest(
       from: Currency,
       to: Currency
-  )
+  ){
+    def isValid: Boolean = from != to
+  }
 
 }

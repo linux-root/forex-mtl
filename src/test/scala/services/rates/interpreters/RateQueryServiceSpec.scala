@@ -58,7 +58,7 @@ object RateQueryServiceSpec extends IOSuite {
     }
   }
 
-  test("Error when cannot handle one frame service's response") { case (config, client) =>
+  test("Error when cannot handle one frame service's response : let it crashed") { case (config, client) =>
     val pair = Pair(USD, SGD)
     val configWithMalformedToken = config.copy(token = "badtoken")
     ratesService[IO](configWithMalformedToken, client).get(pair).attempt.map{result =>

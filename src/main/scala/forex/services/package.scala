@@ -7,5 +7,8 @@ package object services {
   final val RatesServices = rates.Interpreters
 
   type RatesCache[F[_]] = caches.Algebra[F, String, Rate]
-  final val RatesCache = caches.Interpreters
+  final val RatesCacheServices = caches.Interpreters
+
+  type OneFrameFetcher[F[_]] = oneframes.Algebra[F]
+  final val OneFrameFetcherServices = oneframes.Interpreters
 }

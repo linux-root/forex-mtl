@@ -15,6 +15,9 @@ object Dependencies {
     val scalaCheck     = "1.15.3"
     val scalaTest      = "3.2.7"
     val catsScalaCheck = "0.3.2"
+    val weaverCats = "0.6.15"
+    val weaverScalaCheck = "0.6.15"
+    val testContainers = "0.40.15"
   }
 
   object Libraries {
@@ -23,10 +26,13 @@ object Dependencies {
 
     lazy val cats       = "org.typelevel" %% "cats-core"   % Versions.cats
     lazy val catsEffect = "org.typelevel" %% "cats-effect" % Versions.catsEffect
+
     lazy val fs2        = "co.fs2"        %% "fs2-core"    % Versions.fs2
+
 
     lazy val http4sDsl       = http4s("http4s-dsl")
     lazy val http4sServer    = http4s("http4s-blaze-server")
+    lazy val http4sClient    = http4s("http4s-blaze-client")
     lazy val http4sCirce     = http4s("http4s-circe")
     lazy val circeCore       = circe("circe-core")
     lazy val circeGeneric    = circe("circe-generic")
@@ -44,6 +50,10 @@ object Dependencies {
     lazy val scalaTest      = "org.scalatest"     %% "scalatest"       % Versions.scalaTest
     lazy val scalaCheck     = "org.scalacheck"    %% "scalacheck"      % Versions.scalaCheck
     lazy val catsScalaCheck = "io.chrisdavenport" %% "cats-scalacheck" % Versions.catsScalaCheck
+    lazy val testContainers = "com.dimafeng" %% "testcontainers-scala-scalatest" % Versions.testContainers
+    lazy val weaverCats = "com.disneystreaming" %% "weaver-cats" % Versions.weaverCats
+    lazy val weaverScalaCheck = "com.disneystreaming" %% "weaver-scalacheck" % Versions.weaverScalaCheck
+
   }
 
 }

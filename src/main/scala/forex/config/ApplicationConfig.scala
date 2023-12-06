@@ -19,7 +19,7 @@ case class HttpConfig(
 
 case class OneFrameServiceConfig(
   url: Uri,
-  token: String,
+  token: String
 )
 
 object ApplicationConfig {
