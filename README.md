@@ -15,7 +15,7 @@ sbt run
 ```shell
 curl --location 'http://localhost:8080/rates?from=USD&to=SGD'
 ```
-## Run test
+## Run all Unit Tests, Property-based Tests
 ```shell
 sbt test
 ```
