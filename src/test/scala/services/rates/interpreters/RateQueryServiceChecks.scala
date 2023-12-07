@@ -19,6 +19,12 @@ object RateQueryServiceChecks extends SimpleIOSuite with Checkers {
   private val REQUEST_LIMIT = 1000
   private val ONE_DAY_IN_SECONDS = 3600 * 24
   private val TODAY = 1701795600L
+
+  /**
+   *  Simulate the random requests being sent to Forex proxy
+   * @param pair random pair of currencies
+   * @param secondsToTheNextAction
+   */
   case class QueryAction(pair: Pair, secondsToTheNextAction: Long)
 
   object TestClock {
