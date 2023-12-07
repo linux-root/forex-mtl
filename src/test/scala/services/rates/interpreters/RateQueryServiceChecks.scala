@@ -16,7 +16,7 @@ import java.util.concurrent.TimeUnit
 import scala.util.Random
 
 object RateQueryServiceChecks extends SimpleIOSuite with Checkers {
-  private val REQUEST_LIMIT = 1000
+  private val ONE_FRAME_REQUEST_LIMIT = 1000
   private val ONE_DAY_IN_SECONDS = 3600 * 24
   private val TODAY = 1701795600L
 
@@ -53,7 +53,7 @@ object RateQueryServiceChecks extends SimpleIOSuite with Checkers {
   }
 
   case class Counter(remainingRequests: Int, days: Int){
-    def resetCount: Counter = this.copy(remainingRequests = REQUEST_LIMIT, days = this.days + 1)
+    def resetCount: Counter = this.copy(remainingRequests = ONE_FRAME_REQUEST_LIMIT, days = this.days + 1)
 
     def takeRequest: Counter = this.copy(remainingRequests = this.remainingRequests - 1)
   }
@@ -101,7 +101,7 @@ object RateQueryServiceChecks extends SimpleIOSuite with Checkers {
     val queryActionsGen = queryActionGen(1, 8) // This can generate more than ONE_DAY_IN_SECONDS/8 = 10800 requests per day
     forall(Gen.buildableOfN[List[QueryAction], QueryAction](10000, queryActionsGen)) { actions =>
       for {
-        counterRef <- Ref[IO].of(Counter(REQUEST_LIMIT, 0))
+        counterRef <- Ref[IO].of(Counter(ONE_FRAME_REQUEST_LIMIT, 0))
         epochTimestampRef <- Ref[IO].of(TODAY)
         testClock = TestClock.create[IO](epochTimestampRef)
         rateCaches <- rateCacheService[IO](testClock, Sync[IO])
@@ -116,7 +116,7 @@ object RateQueryServiceChecks extends SimpleIOSuite with Checkers {
     val totalRequests = 5000
     forall(Gen.buildableOfN[List[QueryAction], QueryAction](totalRequests, queryActionGen(301, 301))) { actions =>
       for {
-        counterRef <- Ref[IO].of(Counter(REQUEST_LIMIT, 0))
+        counterRef <- Ref[IO].of(Counter(ONE_FRAME_REQUEST_LIMIT, 0))
         epochTimestampRef <- Ref[IO].of(TODAY)
         testClock = TestClock.create[IO](epochTimestampRef)
         rateCaches <- rateCacheService[IO](testClock, Sync[IO])
