@@ -17,7 +17,7 @@ import scala.util.Random
 
 object RateQueryServiceChecks extends SimpleIOSuite with Checkers {
   private val REQUEST_LIMIT = 1000
-  private val _24_HOURS_IN_SECONDS = 3600 * 24
+  private val ONE_DAY_IN_SECONDS = 3600 * 24
   private val TODAY = 1701795600L
   case class QueryAction(pair: Pair, secondsToTheNextAction: Long)
 
@@ -56,7 +56,7 @@ object RateQueryServiceChecks extends SimpleIOSuite with Checkers {
       for {
         now <- Clock[G].realTime(TimeUnit.SECONDS)
         counter <- counterRef.updateAndGet{counter  =>
-          val resetCount = now - TODAY >= (counter.day + 1) *_24_HOURS_IN_SECONDS
+          val resetCount = now - TODAY >= (counter.day + 1) * ONE_DAY_IN_SECONDS
           if (resetCount) counter.resetCount else counter
         }
         randomRates <- if (counter.remainingRequests == 0){
@@ -91,8 +91,9 @@ object RateQueryServiceChecks extends SimpleIOSuite with Checkers {
 
   private implicit val qaShow: Show[QueryAction] = Show.show(_.pair.cacheKey)
 
-  test("10000 requests per day") {
-    forall(Gen.buildableOfN[List[QueryAction], QueryAction](10000, queryActionGen(1, 301))) { actions =>
+  test("At least 10000 requests per day") {
+    val queryActionsGen = queryActionGen(1, 8) // This can generate more than ONE_DAY_IN_SECONDS/8 = 10800 requests per day
+    forall(Gen.buildableOfN[List[QueryAction], QueryAction](10000, queryActionsGen)) { actions =>
       for {
         counterRef <- Ref[IO].of(Counter(REQUEST_LIMIT, 0))
         epochTimestampRef <- Ref[IO].of(TODAY)
@@ -105,7 +106,8 @@ object RateQueryServiceChecks extends SimpleIOSuite with Checkers {
   }
 
   test("Worst case : never hit cache") {
-    forall(Gen.buildableOfN[List[QueryAction], QueryAction](10000, queryActionGen(301, 301))) { actions =>
+    val totalRequests = 5000
+    forall(Gen.buildableOfN[List[QueryAction], QueryAction](totalRequests, queryActionGen(301, 301))) { actions =>
       for {
         counterRef <- Ref[IO].of(Counter(REQUEST_LIMIT, 0))
         epochTimestampRef <- Ref[IO].of(TODAY)
@@ -113,7 +115,9 @@ object RateQueryServiceChecks extends SimpleIOSuite with Checkers {
         rateCaches <- rateCacheService[IO](testClock, Sync[IO])
         service = rateQueryService(counterRef, rateCaches)(testClock, Sync[IO])
         _ <- actions.traverse(action => service.get(action.pair) *> TestClock.adjust[IO](epochTimestampRef)(action.secondsToTheNextAction))
-      } yield expect(true)
+        days <- counterRef.get.map(_.day)
+        _ <- IO.pure(println(s"It takes $days to send all $totalRequests requests"))
+      } yield expect(days >= 1)
     }
   }
 
