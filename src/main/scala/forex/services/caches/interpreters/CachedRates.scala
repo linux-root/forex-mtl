@@ -20,7 +20,6 @@ final class CachedRates[F[_]: Clock: Monad](storageRef: Ref[F, Map[String, Rate]
       rateOpt <- storageRef.get.map{ storage =>
          storage.get(key).filterNot(_.isExpired(currentEpochSeconds))
       }
-      _ <- Monad[F].pure(if (rateOpt.isEmpty) println("miss-------------") else println("hit!"))
     } yield rateOpt
   }
 
