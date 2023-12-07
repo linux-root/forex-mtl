@@ -52,8 +52,8 @@ object RateQueryServiceChecks extends SimpleIOSuite with Checkers {
 
   }
 
-  case class Counter(remainingRequests: Int, day: Int){
-    def resetCount: Counter = this.copy(remainingRequests = REQUEST_LIMIT, day = this.day + 1)
+  case class Counter(remainingRequests: Int, days: Int){
+    def resetCount: Counter = this.copy(remainingRequests = REQUEST_LIMIT, days = this.days + 1)
 
     def takeRequest: Counter = this.copy(remainingRequests = this.remainingRequests - 1)
   }
@@ -62,7 +62,7 @@ object RateQueryServiceChecks extends SimpleIOSuite with Checkers {
       for {
         now <- Clock[G].realTime(TimeUnit.SECONDS)
         counter <- counterRef.updateAndGet{counter  =>
-          val resetCount = now - TODAY >= (counter.day + 1) * ONE_DAY_IN_SECONDS
+          val resetCount = now - TODAY >= (counter.days + 1) * ONE_DAY_IN_SECONDS
           if (resetCount) counter.resetCount else counter
         }
         randomRates <- if (counter.remainingRequests == 0){
@@ -107,7 +107,8 @@ object RateQueryServiceChecks extends SimpleIOSuite with Checkers {
         rateCaches <- rateCacheService[IO](testClock, Sync[IO])
         service = rateQueryService(counterRef, rateCaches)(testClock, Sync[IO])
         _ <- actions.traverse(action => service.get(action.pair) *> TestClock.adjust[IO](epochTimestampRef)(action.secondsToTheNextAction))
-      } yield expect(true)
+        days <- counterRef.get.map(_.days)
+      } yield expect(days <= 1)
     }
   }
 
@@ -121,7 +122,7 @@ object RateQueryServiceChecks extends SimpleIOSuite with Checkers {
         rateCaches <- rateCacheService[IO](testClock, Sync[IO])
         service = rateQueryService(counterRef, rateCaches)(testClock, Sync[IO])
         _ <- actions.traverse(action => service.get(action.pair) *> TestClock.adjust[IO](epochTimestampRef)(action.secondsToTheNextAction))
-        days <- counterRef.get.map(_.day)
+        days <- counterRef.get.map(_.days)
         _ <- IO.pure(println(s"It takes $days to send all $totalRequests requests"))
       } yield expect(days >= 1)
     }
